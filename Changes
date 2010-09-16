@@ -4,3 +4,6 @@ Revision history for Perl extension Net::CSTAv3::Client.
 	- original version; created by h2xs 1.23 with options
 		-AX -n Net::CSTAv3::Client
 
+0.02  Thu Sep 16 14:23:00 2010
+	- fixed a typo in MANIFEST
+

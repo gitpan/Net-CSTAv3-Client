@@ -4,5 +4,5 @@ MANIFEST
 README
 t/Net-CSTAv3-Client.t
 lib/Net/CSTAv3/Client.pm
-lib/Net/CSTAv3/Client/hipath.pm
+lib/Net/CSTAv3/Client/HiPath.pm
 META.yml                                 Module meta-data (added by MakeMaker)

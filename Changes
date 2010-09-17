@@ -7,3 +7,6 @@ Revision history for Perl extension Net::CSTAv3::Client.
 0.02  Thu Sep 16 14:23:00 2010
 	- fixed a typo in MANIFEST
 
+0.03  Thu Sep 17 10:49:00 2010
+	- fixes in documentation
+

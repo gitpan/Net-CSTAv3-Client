@@ -32,7 +32,7 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 sub debug {
 	my $self = shift;
@@ -553,24 +553,38 @@ Net::CSTAv3::Client - Perl implementation of the CSTA Phase 3 protocol as used b
 
 =head1 SYNOPSIS
 
-use Net::CSTAv3::Client;
+A simple example how this module can be used:
 
-my $csta_client;
-my $cross_ref;
+	use Data::Dumper;	
+	use Net::CSTAv3::Client;
+	
+	my $csta_client;
+	my $cross_ref;
+	
+	$csta_client = Net::CSTAv3::Client->new();
 
-$csta_client = Net::CSTAv3::Client->new();
+	sub my_cleared_cb {
+		print "CONNECTION CLEARED CALLBACK\n\n";
+		print Dumper(@_);
+		print "Lets close the connection now\n";
+		$csta_client->csta_destroy_monitoring({'cross-ref-identifier'=>$cross_ref});
+		$csta_client->csta_disconnect();
+		exit(0);
+	}
+	
+	$csta_client->csta_connect({'host'=>'siemens-pbx', 'port'=>18000});
+	$cross_ref = $csta_client->csta_setup_monitoring({'dialing-number'=>'100', 'cleared_cb'=>\&my_cleared_cb});
+	$csta_client->main_loop();
 
-sub my_cleared_cb {
-	print "CONNECTION CLEARED CALLBACK\n\n";
-	print "Lets close the connection now\n";
-	$csta_client->csta_destroy_monitoring({'cross-ref-identifier'=>$cross_ref});
-	$csta_client->csta_disconnect();
-	exit(0);
-}
-
-$csta_client->csta_connect({'host'=>'siemens-pbx', 'port'=>18000});
-$cross_ref = $csta_client->csta_setup_monitoring({'dialing-number'=>'100', 'cleared_cb'=>\&my_cleared_cb});
-$csta_client->main_loop();
+In this example we create a CSTA client instance and connect it to the host
+'siemens-pbx' which accepts connections on port 18000. After that we instruct
+the PBX to monitor the (local) device which is reachable through the number
+'100'. In case of a connection cleared event (which is triggered when a call is
+torn down, for example because the caller or callee is hanging up) the function
+'my_cleared_cb' is executed. It will get a reference to a hash as it's first
+argument. This hash contains more information about the connection cleared
+event because of which this function was called. After that we stop the
+monitoring and disconnect from the PBX.
 
 
 =head1 DESCRIPTION
@@ -604,21 +618,19 @@ Create a new Net::CSTAv3::Client instance $csta_client.
 Connect the client to a PBX. This function takes a reference to a hash with
 parameters. The recognized hash keys are:
 
-=head3 host
+=over 4
 
-The hostname or IP address of the PBX.
+=item * C<host>: The hostname or IP address of the PBX.
 
-=head3 port
+=item * C<port>: The port number on which the PBX is accepting connections.
 
-The port number on which the PBX is accepting connections.
+=item * C<authname>: Authentication name to use when connecting to the PBX.
+Defaults to C<AMHOST>".
 
-=head3 authname
+=item * C<password>: Password to use when connecting to the PBX. Defaults to
+C<77777>.
 
-Authentication name to use when connecting to the PBX. Defaults to "AMHOST".
-
-=head3 password
-
-Password to use when connecting to the PBX. Defaults to "77777".
+=back
 
 =head2 $cross_ref = $csta_client->csta_setup_monitoring({'dialing-number'=>'100'});
 
@@ -627,152 +639,120 @@ to a hash with parameters. The recognized hash keys are documented below.
 Monitoring a device means that the PBX will sent a notification to this client
 if the monitored device is involved in an event that is monitored. CSTA
 supports a wide range of events that can be monitored, but this module (up to
-now) only supports a small subset of those:
+now) only supports the following events:
 
 =over 4
 
-=item The connection cleared event, that occurs if an existing connection to/from the
+=item * The connection cleared event, that occurs if an existing connection to/from the
 monitored device is torn down, for example because the peer is going on-hook.
 
-=item The delivered event, which occurs if a device receives an incoming call.
+=item * The delivered event, which occurs if a device receives an incoming call.
 
-=item The established event, which occurs if a call to/from a device is established.
+=item * The established event, which occurs if a call to/from a device is established.
 
-=item The transferred event, which occurs if a monitored device is involved in
+=item * The transferred event, which occurs if a monitored device is involved in
 a transferred call. A transferred call is a call from device E that is received
 by device A, after that A calls another device B and after the connection
 between A and B is establised A can transfer it's call with E to device B.
 
-=item For more information about these events please refer to the CSTA specification.
+=back
+
+For more information about these events please refer to the CSTA specification.
+
+=over 4
+
+=item * C<dialing-number>: Local dialing number of the device that should be
+monitored.
+
+=item * C<delivered_cb>: A reference to a function that will be executed in
+case a delivered event on the monitored device is observed. If this parameter
+is undefined all delivered-events from this device will be ignored.
+
+=item * C<cleared_cb>: A reference to a function that will be executed in case
+a connection-cleared-event on the monitored device is observed. If this
+parameter is undefined all connection-cleared-events from this device will be
+ignored.
+
+=item * C<established_cb>: A reference to a function that will be executed in
+case a established-event on the monitored device is observed. If this parameter
+is undefined all established-events from this device will be ignored.
+
+=item * C<transferred_cb>: A reference to a function that will be executed in
+case a transferred-event on the monitored device is observed. If this parameter
+is undefined all transferred-events from this device will be ignored.
+
+=back 4
+
+The callback functions will receive a reference to a hash with event parameters.
+In case of a delivered-event the most interesting parameters / hash keys are:
+
+=over 4
+
+=item C<alerting-device>: The dialing number of the device which is ringing
+
+=item C<calling-device>: The dialing number of the calling device
+
+=item C<called-device>: The dialing number of the called device
+
+=item C<cross-ref-identifier>: The cross reference identifier for the monitor
+instance. This is the same identifier which was returned by the
+csta_setup_monitoring function for the device that caused this event
+
+=back
+
+In case of a delivered-event the most interesting parameters / hash keys are:
+
+=over 4
+
+=item C<releasing-device>: The dialing number of the device that closed the connection
+
+=item C<dialing-number>: The dialing number of the device that generated this event
+
+=item C<cross-ref-identifier>: The cross reference identifier for the monitor
+instance. This is the same identifier which was returned by the
+csta_setup_monitoring function for the device that caused this event
+
+=back
+
+In case of a delivered-event the most interesting parameters / hash keys are:
+
+=over 4
+
+=item C<answering-device>: The dialing number of the device that answered the
+call
+
+=item C<calling-device>: The dialing number of the device which initiated the
+call
+
+=item C<called-device>: The dialing number of the device which was called by
+calling-device
+
+=item C<cross-ref-identifier>: The cross reference identifier for the monitor
+instance. This is the same identifier which was returned by the
+csta_setup_monitoring function for the device that caused this event
+
+=back
+
+In case of a delivered-event the most interesting parameters / hash keys are:
+
+=over 4
+
+=item C<transferring-device>: The dialing number of the device that is
+responsible for the call transfer
+
+=item C<transferred-to-device>: The dialing number of the device which became
+the new internal endpoint for the transferred call
+
+=item C<endpoint>: The dialing number of the device which initially called
+
+=item C<cross-ref-identifier>: The cross reference identifier for the monitor
+instance. This is the same identifier which was returned by the
+csta_setup_monitoring function for the device that caused this event
 
 =back
 
 Note that you have to call the main_loop() function to receive incoming events
 as soon as possible.
-
-=head3 dialing-number
-
-Local dialing number of the device that should be monitored.
-
-=head3 delivered_cb
-
-A reference to a function that will be executed in case a delivered event on
-the monitored device is observed. If this parameter is undefined all
-delivered-events from this device will be ignored.
-
-The callback function will receive a reference to a hash with event parameters.
-In case of a delivered-event the most interesting parameters / hash keys are:
-
-=over 4
-
-=item alerting-device:
-
-  The dialing number of the device which is ringing
-
-=item calling-device:
-
-  The dialing number of the calling device
-
-=item called-device:
-
-  The dialing number of the called device
-
-=item cross-ref-identifier:
-
-  The cross reference identifier for the monitor instance. This is the same
-  identifier which was returned by the csta_setup_monitoring function for the
-  device that caused this event
-
-=back
-
-=head3 cleared_cb 
-
-A reference to a function that will be executed in case a
-connection-cleared-event on the monitored device is observed. If this parameter
-is undefined all connection-cleared-events from this device will be ignored.
-
-The callback function will receive a reference to a hash with event parameters.
-In case of a delivered-event the most interesting parameters / hash keys are:
-
-=over 4
-
-=item releasing-device:
-
-  The dialing number of the device that closed the connection
-
-=item dialing-number:
-
-  The dialing number of the device that generated this event
-
-=item cross-ref-identifier:
-
-  The cross reference identifier for the monitor instance. This is the same
-  identifier which was returned by the csta_setup_monitoring function for the
-  device that caused this event
-
-=back
-
-
-=head3 established_cb 
-
-A reference to a function that will be executed in case a established-event on
-the monitored device is observed. If this parameter is undefined all
-established-events from this device will be ignored.
-
-The callback function will receive a reference to a hash with event parameters.
-In case of a delivered-event the most interesting parameters / hash keys are:
-
-=over 4
-
-=item answering-device:
-
-  The dialing number of the device that answered the call
-
-=item calling-device:
-
-  The dialing number of the device which initiated the call
-
-=item called-device:
-
-  The dialing number of the device which was called by calling-device
-
-=item cross-ref-identifier:
-
-  The cross reference identifier for the monitor instance. This is the same
-  identifier which was returned by the csta_setup_monitoring function for the
-  device that caused this event
-
-=back
-
-
-=head3 transferred_cb 
-
-A reference to a function that will be executed in case a transferred-event on
-the monitored device is observed. If this parameter is undefined all
-transferred-events from this device will be ignored.
-
-=over 4
-
-=item transferring-device:
-
-  The dialing number of the device that is responsible for the call transfer
-
-=item transferred-to-device:
-
-  The dialing number of the device which became the new internal endpoint for
-the transferred call
-
-=item endpoint:
-
-  The dialing number of the device which initially called
-
-=item cross-ref-identifier:
-
-  The cross reference identifier for the monitor instance. This is the same
-  identifier which was returned by the csta_setup_monitoring function for the
-  device that caused this event
-
-=back
 
 =head2 $csta_client->csta_destroy_monitoring({'cross-ref-identifier'=>$cross_ref})
 

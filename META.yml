@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Net-CSTAv3-Client
-version:            0.02
+version:            0.03
 abstract:           Perl implementation of the CSTA Phase 3 protocol as used by siemens clients
 author:
     - Timo Schneider <timos@informatik.tu-chemnitz.de>

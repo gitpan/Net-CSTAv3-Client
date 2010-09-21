@@ -3,7 +3,6 @@ package Net::CSTAv3::Client;
 use Carp;
 use strict;
 use warnings;
-use 5.010001;
 use Data::Dumper;
 use Convert::ASN1::asn1c;
 
@@ -32,7 +31,7 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 sub debug {
 	my $self = shift;

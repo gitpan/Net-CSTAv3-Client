@@ -3,7 +3,6 @@ package Net::CSTAv3::Client;
 use Carp;
 use strict;
 use warnings;
-use Data::Dumper;
 use Convert::ASN1::asn1c;
 
 require Exporter;
@@ -31,7 +30,7 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 sub debug {
 	my $self = shift;
@@ -396,8 +395,6 @@ sub parse_connection_cleared_event {
 	$self->debug("> timestamp: $values->{'timestamp'}\n");
 
 	$self->{'_active_monitorings'}->{$values->{'cross-ref-identifier'}}->{'cleared_cb'}->($values);
-
-	print Dumper($self);
 
 	return $values;
 }

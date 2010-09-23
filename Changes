@@ -13,3 +13,6 @@ Revision history for Perl extension Net::CSTAv3::Client.
 0.04  Tue Sep 21 10:53:00 2010
 	- removed requirement on too recent perl version
 
+0.05  Tue Sep 21 16:17:00 2010
+	- removed debug print, thanks to Ruben Moretti for finding this bug!
+

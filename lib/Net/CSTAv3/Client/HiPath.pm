@@ -420,6 +420,28 @@ END
 return $heredoc;
 }
 
+sub CSTA_SetDisplay {
+$heredoc = <<'END';
+<C O="0" T="[1]" TL="2" V="23">
+    <P O="2" T="[UNIVERSAL 2]" TL="2" V="1" A="INTEGER">$invoke-id</P>
+    <P O="5" T="[UNIVERSAL 2]" TL="2" V="2" A="INTEGER">&#x01;&#x12;</P>
+    <C O="9" T="[UNIVERSAL 16]" TL="2" V="14" A="SEQUENCE">
+        <C O="11" T="[UNIVERSAL 16]" TL="2" V="5" A="SEQUENCE">
+            <P O="13" T="[0]" TL="2" V="3">$device</P>
+        </C O="18" T="[UNIVERSAL 16]" A="SEQUENCE" L="7">
+        <P O="18" T="[UNIVERSAL 22]" TL="2" V="5" A="IA5String">$text</P>
+    </C O="25" T="[UNIVERSAL 16]" A="SEQUENCE" L="16">
+</C O="25" T="[1]" L="25">
+END
+return $heredoc;
+}
+
+sub CSTA_SetDisplayResponse {
+	# it is the general ROSE RORS packet, no need too duplicate it
+	return CSTA_SystemStatusResponse();
+}
+
+
 sub CSTA_MonitorStop {
 $heredoc = <<'END';
 <C O="0" T="[1]" TL="2" V="12">

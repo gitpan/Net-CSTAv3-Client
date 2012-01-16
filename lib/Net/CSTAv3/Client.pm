@@ -30,7 +30,7 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 sub debug {
 	my $self = shift;
@@ -61,6 +61,8 @@ sub open_csta_socket {
 	my $self = shift;
 	my $host = shift;
 	my $port = shift;
+
+	$self->debug("trying to open a connection to $host on port $port\n");
  
 	my $socket = new IO::Socket::INET(
         PeerAddr => $host,
@@ -346,7 +348,7 @@ sub parse_csta_event_report {
 	my $node = $tagpaths->[0];
 	my $packettype = undef;
 	my $escaped_regex = quotemeta("[1]|[UNIVERSAL 16]|[0]|");
-	if ($node =~ /$escaped_regex \[(\d)\]/x) {
+	if ($node =~ /$escaped_regex \[(\d+)\]/x) {
 		$packettype = $1;
 	}
 
@@ -497,18 +499,50 @@ sub send_csta_make_call {
 	$self->send_pdu($pdu);
 }
 
+sub send_csta_set_display {
+	my $self = $_[0];
+	my %args = %{$_[1]}; 
+
+	my $conv = Convert::ASN1::asn1c->new();
+
+	my $pdu = $conv->sencode(Net::CSTAv3::Client::HiPath::CSTA_SetDisplay(), {
+					'device'=>$conv->encode_octet_string($args{'device'}, length($args{'device'})),
+	                'text'=>$conv->encode_octet_string($args{'text'}, length($args{'text'})),
+	                'invoke-id'=>$conv->encode_integer($args{'invoke-id'}, 1),
+	                'invoke-id_length'=>1, #TODO handle length correctly
+	});
+	$self->debug("SENDING CSTA-SetDisplay\n");
+	$self->send_pdu($pdu);
+}
+
+
+
 sub receive_csta_make_call_response {
 	
 	my $self = shift;
 	my $conv = Convert::ASN1::asn1c->new();
 	my $pdu = $self->receive_stuff();
-	my $values = $conv->decode(Net::CSTAv3::Client::HiPath::CSTA_MakeCallResponse(), $pdu);
+	my $values = $conv->sdecode(Net::CSTAv3::Client::HiPath::CSTA_MakeCallResponse(), $pdu);
 
 	$self->debug("RECEIVED CSTA-MakeCallResponse\n");
 	$self->debug("> invoke-id: $values->{'invoke-id'}\n");
 	$self->debug("> operation-value: $values->{'operation-value'}\n");
 	$self->debug("> call-id: $values->{'call-id'}\n");
 	$self->debug("> dialing-number: $values->{'dialing-number'}\n");
+	return $values;
+
+}
+
+sub receive_csta_set_display_response {
+	
+	my $self = shift;
+	my $conv = Convert::ASN1::asn1c->new();
+	my $pdu = $self->receive_stuff();
+	my $values = $conv->sdecode(Net::CSTAv3::Client::HiPath::CSTA_SetDisplayResponse(), $pdu);
+
+	$self->debug("RECEIVED CSTA-SetDisplayResponse\n");
+	$self->debug("> invoke-id: $values->{'invoke-id'}\n");
+	$self->debug("> operation-value: $values->{'operation-value'}\n");
 	return $values;
 
 }
@@ -529,6 +563,11 @@ sub debug_on {
 sub debug_off {
 	my $self = shift;
 	$self->{'_debug_state'} = 0;
+}
+
+sub get_socket {
+	my $self = shift;
+	return $self->{'_csta_socket'}
 }
 
 sub main_loop {
